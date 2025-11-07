@@ -7,37 +7,38 @@ import streamlit as st
 
 @st.cache_resource 
 def load_data():
-    _df = pd.read_csv("raw/singapore/2025-09-28/visualisations/listings.csv")
-    _geojson_data = gpd.read_file("raw/singapore/2025-09-28/visualisations/neighbourhoods.geojson")
-    _world_bounds = gpd.read_file("world.geojson")
-    vignette_area_calc = _world_bounds.union_all() - _geojson_data.union_all()
-    vignette_area = gpd.GeoDataFrame(geometry=[vignette_area_calc], crs=_world_bounds.crs)
-    heatmap_data = _df[["latitude", "longitude", "price"]].dropna()
-    price_min = _df['price'].quantile(0.05)
-    price_max = _df['price'].quantile(0.95)
+    df = pd.read_csv("raw/singapore/2025-09-28/visualisations/listings.csv",dtype={"id": str},low_memory=False)
+    geojson_data = gpd.read_file("raw/singapore/2025-09-28/visualisations/neighbourhoods.geojson",low_memory=False)
+    world_bounds = gpd.read_file("world.geojson",low_memory=False)
+    vignette_area = world_bounds.union_all() - geojson_data.union_all()
+    heatmap_data = df[["latitude", "longitude", "price"]].dropna()
+    price_min = df['price'].quantile(0.05)
+    price_max = df['price'].quantile(0.95)
     gdf = gpd.GeoDataFrame(
-        _df, 
-        geometry=gpd.points_from_xy(_df.longitude, _df.latitude)
+        df[["id", "host_id", "name", "host_name", "neighbourhood", 'room_type', "price"]], 
+        geometry=gpd.points_from_xy(df.longitude, df.latitude),
     )
     gdf.set_crs("EPSG:4326", inplace=True)
-    data = _df[["latitude","longitude","price","host_name"]]
-    colors_ylorrd = ['#FFFFE5', '#FEB24C', '#F03B20', '#BD0026']
-    heat_gradient = {0.2: '#FFFFE5', 0.5: '#FEB24C', 0.8: '#F03B20', 1.0: '#BD0026'}
+    data = df[["latitude","longitude","price","host_name"]]
+    colors = ['#f7fcf5', '#c7e9c0', '#74c476', '#238b45', '#00441b']
+    heat_gradient = {0.2:'#f7fcf5',0.4: '#c7e9c0', 0.6:'#74c476', 0.8:'#238b45',1.0: '#00441b'}
     colormap = branca.colormap.LinearColormap(
-    colors=colors_ylorrd,
+    colors=colors,
     vmin=price_min,
     vmax=price_max
     )
     colormap.caption = 'House Price'
-    return _geojson_data, vignette_area, heatmap_data, data, heat_gradient, colormap, gdf
+    colormap.width = 350
+    colormap.top = '90%'
+    colormap.left = '1%'
+    return geojson_data, vignette_area, heatmap_data, data, heat_gradient, colormap, gdf
 
 def style_function(feature):
-    return {'fillColor': '#00000000', 'color': "#00000076", 'fillOpacity': 0.3, 'opacity': 1}
+    return {'fillColor': '#00000000', 'color': "#322E2E76", 'fillOpacity': 0.3, 'opacity': 1, 'weight': 2}
 def highlight_function(feature):
     return {'fillColor': '#ff0000', 'color': 'green', 'weight': 5, 'opacity': 1, 'fillOpacity': 0.2}
 def vignette_style(feature):
-    return {'fillColor': '#FFFFFF', 'color': '#00000076', 'fillOpacity': 0.8, 'opacity': 1}
-
+    return {'fillColor': '#FFFFFF', 'color': "#3B353576", 'fillOpacity': 0.8, 'opacity': 1, 'weight': 2}
 
 
 
@@ -47,10 +48,19 @@ def create_map():
 
     
     CENTER_START = [1.330270, 103.851959]
-    
-    m = folium.Map(location=CENTER_START, control_scale=True, zoom_start=11.75, zoomDelta=0.25, zoomSnap=0.25)
-    folium.TileLayer('OpenStreetMap', name='OpenStreetMap', control=False).add_to(m)
-
+    m = folium.Map(location=CENTER_START,
+                    tiles="OpenStreetMap", 
+                    control_scale=True, 
+                    zoom_start=11, 
+                    zoomDelta=0.25, 
+                    zoomSnap=0.25,
+                    # max_lat = 1.47,
+                    # min_lat = 1.15,
+                    # min_lon = 103.63,
+                    # max_lon = 104.1,
+                    zoom_control=False,
+                    prefer_canvas=True
+                )
 
     folium.GeoJson(
         vignette_area, style_function=vignette_style, name='Vignette Layer', control=False
@@ -62,7 +72,7 @@ def create_map():
     HeatMap(data=heatmap_data, name='House Price', gradient=heat_gradient, blur=15, radius=30, min_opacity=0.2).add_to(m)
     colormap.add_to(m)
     marker_cluster = MarkerCluster(
-        name="Airbnb Density", control=True,options={'max_cluster_radius': 100}, disableClusteringAtZoom=18
+        name="Airbnb Density", control=True,options={'max_cluster_radius': 60}, disableClusteringAtZoom=18
     )
     
     # for lati, longi in zip(data.latitude, data.longitude):
@@ -71,27 +81,49 @@ def create_map():
     #         fill_opacity=1, weight=1, tooltip=[lati, longi], popup="Hi, I'm a marker"
     #     ).add_to(marker_cluster)
     # marker_cluster.add_to(m)
-    # callback = """
-    # function (row) {
-    #     var popup = row[2];  // Use the HTML string from Python
-    #     return L.marker(new L.LatLng(row[0], row[1])).bindPopup(popup);
-    # }
-    # """
-    # coords = [
-    #     [row.latitude, row.longitude, f"<b>{row.host_name}</b><br>Price: ${row.price}"]
+    # # coords = [
+    # #     [row.latitude, row.longitude, f"<b>{row.host_name}</b><br>Price: ${row.price}"]
     #     for row in data.itertuples(index=False)
     # ]
     # FastMarkerCluster(coords, callback=callback).add_to(m)
+    css = """
+    <style>
+    .leaflet-container {
+	font-size: 0.55rem  !important;
+    </style>
+	}
+    
+    """
+    m.get_root().header.add_child(folium.Element(css))
+    on_each_feature = folium.JsCode(
+    """
+    (feature, layer) => {
+        layer.bindTooltip(feature.properties.name);
+        layer.on("click", (event) => {
+            Streamlit.setComponentValue(
+                feature.properties.id,
+                // Be careful, on_each_feature binds only once.
+                // You need to extract the current location from
+                // the event.
+            );
+        });
+
+    }
+"""
+    )
     folium.GeoJson(
         gdf,
-        name="Listings (Circles)",
-        marker=folium.Marker(radius=2, fill_color="#3388FF", fill=True, fill_opacity=1, weight=1, popup="Hi, I'm a marker"),
-        tooltip=folium.GeoJsonTooltip(fields=['name'])
+        name="Listings",
+        marker=folium.Marker(icon=folium.Icon(icon='star')),
+        tooltip=folium.GeoJsonTooltip(fields=["name","price"]),
+        popup=folium.GeoJsonPopup(fields=["name"]),
+        on_each_feature=on_each_feature
+
     ).add_to(marker_cluster)
     marker_cluster.add_to(m)
 
 
-    folium.LayerControl(collapsed=False, position='bottomright').add_to(m)
+    folium.LayerControl(collapsed=True, position='bottomright').add_to(m)
     folium.plugins.Fullscreen(
         position="topright", title="Expand me", title_cancel="Exit me", force_separate_button=True
     ).add_to(m)
