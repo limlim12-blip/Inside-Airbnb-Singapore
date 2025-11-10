@@ -208,3 +208,4 @@ __marimo__/
 processed/
 raw/
 .vscode/
+__pycache__

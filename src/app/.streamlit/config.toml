@@ -2,6 +2,7 @@
 showSidebarNavigation = false
 [theme]
 primaryColor = "#F63366"
+textColor = "#000000ff"
 baseFontSize=14
-backgroundColor =  "#6e8992ff"
+backgroundColor =  "#ffffffff"
 [ui]
