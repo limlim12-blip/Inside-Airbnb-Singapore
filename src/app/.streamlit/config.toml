@@ -1,8 +1,9 @@
 [client]
 showSidebarNavigation = false
 [theme]
-primaryColor = "#F63366"
-textColor = "#000000ff"
-baseFontSize=14
+primaryColor = "#f50d4bff"
+textColor = "#0f325a"
+baseFontSize=12
 backgroundColor =  "#ffffffff"
+font = "sans serif"
 [ui]

@@ -1,3 +1,4 @@
+import time
 from load_data import load_listings, load_geojson
 import pandas as pd
 import geopandas as gpd
@@ -5,73 +6,77 @@ import folium
 import branca
 from folium.plugins import HeatMap, MarkerCluster, Fullscreen, FastMarkerCluster
 import streamlit as st
-import numpy as np
-
-if 'city' not in st.session_state:
-    st.session_state['city'] = 'Singapore, Singapore, Singapore'
 @st.cache_resource
-def load_data():
+def load_data(city):
     # get listings.csv singapore
-    df = load_listings(st.session_state['city'])
+    start_time = time.perf_counter()
+    df = load_listings(city)
     
     # get singapore bounds
-    geojson_data, world_bounds = load_geojson(st.session_state['city'])
+    geojson_data, world_bounds = load_geojson(city)
     vignette_area = world_bounds.union_all() - geojson_data.union_all()
 
     # heatmap
     heatmap_data = df[["latitude", "longitude", "price"]].dropna()
-    price_min = heatmap_data['price'].quantile(0.05)
-    price_max = heatmap_data['price'].quantile(0.95)
+    heatmap_data['price'] = heatmap_data['price'].replace({'\$': '', ',': ''}, regex=True)
+    heatmap_data['price'] = pd.to_numeric(heatmap_data['price'], errors='coerce')
+    price_min = heatmap_data['price'].quantile(0.02)
+    price_max = heatmap_data['price'].quantile(0.98)
     if len(heatmap_data['price']) == 0:
         price_min = 0
         price_max = 100
 
-
+    # colormap 
+    colors = ["blue",  "cyan",  "lime",  "yellow", "red"]
+    colormap = branca.colormap.LinearColormap(
+    colors=colors,
+    vmin=price_min,
+    vmax=price_max,
+    )
+    colormap.caption = 'House Price'
 
     # markers data
     gdf = gpd.GeoDataFrame(
-        df[["id", "host_id", "name", "host_name", "neighbourhood", 'room_type', "price", "number_of_reviews"]].fillna(0), 
+        df[["id", "host_id", "name", "host_name", "neighbourhood", 'room_type', "price", "number_of_reviews"]], 
         geometry=gpd.points_from_xy(df.longitude, df.latitude),
     )
     gdf.set_crs("EPSG:4326", inplace=True)
 
-    # colormap 
-    colors = ['#f7fcf5', '#c7e9c0', '#74c476', '#238b45', '#00441b']
-    heat_gradient = {0.2:'#f7fcf5',0.4: '#c7e9c0', 0.6:'#74c476', 0.8:'#238b45',1.0: '#00441b'}
-    colormap = branca.colormap.LinearColormap(
-    colors=colors,
-    vmin=price_min,
-    vmax=price_max
-    )
-    colormap.caption = 'House Price'
-    colormap.width = 350
-    colormap.top = '90%'
-    colormap.left = '1%'
-    return geojson_data, vignette_area, heatmap_data,heat_gradient, colormap, gdf
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    print(f"load map data executed in {elapsed_time:.4f} seconds.")
+    return geojson_data, vignette_area, heatmap_data, colormap, gdf
 
 #style func
 def style_function(feature):
-    return {'fillColor': '#00000000', 'color': "#322E2E76", 'fillOpacity': 0.3, 'opacity': 1, 'weight': 2}
+    return {'fillColor': "#00000000", 'color': "#3511FF63", 'fillOpacity': 0.3, 'opacity': 1, 'weight': 1}
 def highlight_function(feature):
-    return {'fillColor': '#ff0000', 'color': 'green', 'weight': 5, 'opacity': 1, 'fillOpacity': 0.1}
+    return {'fillColor': '#ff0000', 'color': 'green', 'weight': 4, 'opacity': 1, 'fillOpacity': 0.1}
 def vignette_style(feature):
-    return {'fillColor': '#FFFFFF', 'color': "#3B353576", 'fillOpacity': 0.8, 'opacity': 1, 'weight': 2}
+    return {'fillColor': "#FFFFFF83", 'color': "#FF118876", 'fillOpacity': 0.6, 'opacity': 1, 'weight': 1}
 
 
 
-def create_map():
+
+def create_map(city):
     
-    geojson_data, vignette_area, heatmap_data, heat_gradient, colormap,gdf = load_data()
+    start_time = time.perf_counter()
+    geojson_data, vignette_area, heatmap_data, colormap,gdf = load_data(city)
 
-    
+    minx, miny, maxx, maxy = geojson_data.total_bounds
+    bounds = [[miny, minx], [maxy, maxx]]
     # setup map
     CENTER_START = [1.330270, 103.851959]
-    m = folium.Map(location=CENTER_START,
+    m = folium.Map(
                     control_scale=True, 
                     zoom_start=11, 
-                    zoomDelta=0.25, 
+                    min_lat=miny,
+                    min_lon=minx,
+                    max_lat=maxy,
+                    max_lon=maxx,
+                    max_bounds=bounds,
+                    zoomDelta=0, 
                     zoomSnap=0.25,
-                    max_bounds=True,
                     max_zoom=16,
                     zoom_control=False,
                     prefer_canvas=True
@@ -87,22 +92,27 @@ def create_map():
         border-radius: 10px; 
         font-size: 1.2em;
 	}
+    .leaflet-control-layers-expanded {
+        width: 130px !important; 
+        font-size: 0.75rem  !important;
+    }
     </style>
     """
     m.get_root().header.add_child(folium.Element(css))
 
 
     # heatmap + colormap
-    HeatMap(data=heatmap_data, name='House Price', gradient=heat_gradient, blur=15, radius=30, min_opacity=0.2).add_to(m)
+    HeatMap(data=heatmap_data, name='House Price', blur=20, radius=25, min_opacity=0.2).add_to(m)
     colormap.add_to(m)
 
     # bounds 
     folium.GeoJson(
-        vignette_area, style_function=vignette_style, name='Vignette Layer', control=False
+        vignette_area, style_function=vignette_style, name='Vignette Layer', control=False,overlay=False,
     ).add_to(m)
     folium.GeoJson(
         geojson_data, style_function=style_function, highlight_function=highlight_function,
-        name='GeoJSON Layer', zoom_on_click=True, control=False,
+        name='GeoJSON Layer', zoom_on_click=True, control=False,overlay=False,
+
         on_each_feature= folium.JsCode(   
         """
             (feature, layer) => {
@@ -141,10 +151,22 @@ def create_map():
     # ]
     # FastMarkerCluster(coords, callback=callback).add_to(m)
 
+    url = "https://leafletjs.com/examples/custom-icons/{}".format
+    icon_image = url("leaf-red.png")
+    house_type_color = {"Entire home/apt":url("leaf-red.png"), "Private room":url("leaf-red.png"), "Shared room":url("leaf-red.png") }
+    shadow_image = url("leaf-shadow.png")
     folium.GeoJson(
         gdf,
         name="Listings",
-        marker=folium.Marker(icon=folium.Icon(icon='star')),
+        marker=folium.Marker(icon = folium.CustomIcon(
+            icon_image,
+            icon_size=(19, 48),       
+            icon_anchor=(11, 47),     
+            shadow_image=shadow_image,
+            shadow_size=(25, 32),     
+            shadow_anchor=(2, 31),     
+            popup_anchor=(-2, -38),   
+        )),
         #! code lấy từ streamlit-folium
         on_each_feature= folium.JsCode(          
         """
@@ -172,13 +194,15 @@ def create_map():
     ).add_to(marker_cluster)
     marker_cluster.add_to(m)
 
+    
+    m.fit_bounds([[miny, minx], [maxy, maxx]])
 
     # plugins
-    folium.LayerControl(collapsed=True, position='bottomright').add_to(m)
+    folium.LayerControl(collapsed=False, position='bottomright',draggable=True).add_to(m)
     Fullscreen(
         position="topright", title="Expand me", title_cancel="Exit me", force_separate_button=True
     ).add_to(m)
-    minx, miny, maxx, maxy = geojson_data.total_bounds
-    m.fit_bounds([[miny, minx], [maxy, maxx]])
-    
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    print(f"draw map executed in {elapsed_time:.4f} seconds.")
     return m

@@ -1,4 +1,5 @@
 
+import numpy as np
 import time
 from bs4 import BeautifulSoup
 import requests
@@ -11,7 +12,6 @@ import matplotlib.pyplot as plt
 from folium import plugins
 from folium.plugins import MarkerCluster, HeatMap
 import branca
-from streamlit_option_menu import option_menu
 import streamlit as st
 from streamlit_folium import st_folium
 
@@ -35,23 +35,16 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 with st.popover("Menu"):
     st.page_link("pages/map_smth.py", label="Map")
 st.header("Singapore", divider=True)
-m = folium.Map(location=[40.7128, -74.0060], zoom_start=12)
+CENTER_START = [1.330270, 103.851959]
+m = folium.Map(
+)
+a = [[np.float64(1.158699), np.float64(103.605436)], [np.float64(1.470775), np.float64(104.088483)]]
+m.fit_bounds(a)
+
 folium.Marker([40.7128, -74.0060], popup="New York City").add_to(m)
 
-st.title("Streamlit Folium Map in a Column")
+st_folium(m, width="strech", height=500) 
 
-# Create two columns
-col1, col2 = st.columns(2)
-
-with col1:
-    st.header("Map Column")
-    # Display the Folium map in the first column
-    st_folium(m, width=700, height=500) # Adjust width/height as needed
-
-with col2:
-    st.header("Information Column")
-    st.write("This column can contain other information related to the map or other app elements.")
-    st.button("Click me!")
 # ! jupyter nbconvert --to script Untitled0.ipynb
 
 # d1 = pd.read_csv("https://data.insideairbnb.com/taiwan/northern-taiwan/taipei/2025-06-29/data/listings.csv")
