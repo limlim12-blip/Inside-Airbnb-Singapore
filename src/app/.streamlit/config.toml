@@ -6,4 +6,5 @@ textColor = "#0f325a"
 baseFontSize=12
 backgroundColor =  "#ffffffff"
 font = "sans serif"
-[ui]
+[server]
+baseUrlPath = "map_smth"

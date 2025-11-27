@@ -1,17 +1,6 @@
 
 import numpy as np
-import time
-from bs4 import BeautifulSoup
-import requests
-import pandas as pd
-import os
-from datetime import datetime
-import geopandas as gpd
 import folium
-import matplotlib.pyplot as plt
-from folium import plugins
-from folium.plugins import MarkerCluster, HeatMap
-import branca
 import streamlit as st
 from streamlit_folium import st_folium
 

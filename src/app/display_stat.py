@@ -1,8 +1,14 @@
+from turtle import color
 from load_data import load_fig
 import streamlit as st
 from streamlit_extras.stylable_container import stylable_container
+import glob
+import random
+
+
+roblox_files = glob.glob("roblox_profile_pic/*.png")
+random.seed(42)
 def city_display_data(listings):
-    fig,room_type_counts,top_host_table = load_fig(listings=listings)
     with st.container(border=True,key='1', horizontal_alignment="left",height=100):
         col1, col2 = st.columns([1,1])
         with col1:
@@ -12,10 +18,120 @@ def city_display_data(listings):
             number = f"{len(listings):,} listings "
             st.title(f":rainbow[{number}]")
     st.space()
+    display_stat(listings)
+
+
+
+
+
+def neibourhood_display_data(listings, st_data):
+    neibourhood_listings = listings.loc[listings['neighbourhood_cleansed'] == st_data['Neighbourhood']]
+    with st.container(border=True,key='1', horizontal_alignment="left",height=100):
+        col1, col2 = st.columns([1,1])
+        with col1:
+            citi = st.session_state['city'].split(',')
+            st.header(f":blue[{st_data['Neighbourhood']}]")
+        with col2:
+            number = f"{len(neibourhood_listings):,} listings "
+            st.header(f":rainbow[{number}]")
+    display_stat(neibourhood_listings)
+
+
+
+
+
+def listings_display_data(df_reviews,df_listings,data):
+    with st.spinner("load comment"):
+        listings_data = df_listings.loc[df_listings["id"] == data]
+        name = listings_data['name']
+        st.markdown(f'<h2 class="listings-name">{str(name.iloc[0])}</h2>', unsafe_allow_html= True)
+
+        
+        st.header('', divider='rainbow')
+        col1, col2 = st.columns([1,6])
+        with col1:
+            host_image = listings_data['host_picture_url']
+            st.space('small')
+            st.markdown(f'<img src="{host_image.iloc[0]}" alt="0" style="width: 40px;\
+                        max-width: 100%; margin-left: 2rem; margin-top: 8px; border-radius: 50%;">'
+                            , unsafe_allow_html= True)
+        with col2:
+            host_name = listings_data['host_name']
+            st.markdown(f'<h3 class="listings-host">Hosted by {str(host_name.iloc[0])}</h3>', unsafe_allow_html= True)
+            host_since = listings_data['host_since']
+            st.markdown(f'<p class="listings-host">Host since {host_since.iloc[0]}</p>', unsafe_allow_html= True)
+
+
+        st.header('', divider='rainbow')
+        st.space("small") 
+        with st.container(key= 'airbnb_detail'):
+            _, col2 = st.columns([1,15])
+            col2.header("ABOUT THIS PLACE: ") 
+            st.space("small") 
+            st.markdown("<p  style = ' margin-left: 30px; margin-right: 30px;'>" +\
+                            listings_data['description'].iloc[0] +"</p>", unsafe_allow_html= True)
+
+        _, center,_ = st.columns([1,20,1])
+        center.space('medium')
+        center.image(str(listings_data['picture_url'].iloc[0]))
+        center.space('medium')
+        cols = center.columns([1.5,1.3,1.2,1.8,1.2,1], gap='small')
+        items = [
+            {"label": "Cleanliness", "score": f'{listings_data["review_scores_cleanliness"].iloc[0]}', "icon": "🧼"},
+            {"label": "Accuracy", "score": f'{listings_data["review_scores_accuracy"].iloc[0]}', "icon": "✅"},
+            {"label": "Check-in", "score": f'{listings_data["review_scores_checkin"].iloc[0]}', "icon": "🔑"},
+            {"label": "Communication", "score": f'{listings_data["review_scores_communication"].iloc[0]}', "icon": "💬"},
+            {"label": "Location", "score": f'{listings_data["review_scores_location"].iloc[0]}', "icon": "🗺️"},
+            {"label": "Value", "score": f'{listings_data["review_scores_value"].iloc[0]}', "icon": "🏷️"}
+        ]
+        for i, col in enumerate(cols):
+            item = items[i]
+            with col:
+                st.write(f'**{item["label"]}**')
+                st.write(item['score'])
+                st.write(item['icon'])
+
+
+
+        reviews = df_reviews[df_reviews["listing_id"] == int(data)]
+        with st.container():
+
+            if(listings_data['number_of_reviews'] is not None):
+                st.subheader(f'{listings_data["number_of_reviews"].iloc[0]} reviews')
+            else:
+                st.subheader('0 reviews')
+            st.divider()
+
+            st.markdown('<div class="review-marker"/>', unsafe_allow_html=True)
+
+            with st.container(width='stretch', key= 'review_section', border= False):
+                if reviews.empty:
+                    st.write("This listing has no comments.")
+                else:
+                    for _, review in reviews.iterrows():
+                        col1, col2 = st.columns([1,7])
+                        with col1.container():
+                            st.image(random.choice(roblox_files), width= 45)
+                        with col2.container():
+                            st.space(12)
+                            st.markdown(f":rainbow[**{review['reviewer_name']}**]")
+                            st.caption(f":red[{review['date']}]")
+                        st.markdown("<br/>",unsafe_allow_html=True)
+                        st.write(review["comments"])
+                        st.space("medium") 
+        
+
+
+
+def display_stat(listings):
+    if listings.empty:
+        st.write("No listings match the current filters.")
+        return
+    fig1, room_type_counts, top_host_table, fig2, fig3, fig4 = load_fig(listings=listings)
     with st.container(height=570,border=False):
         _,aligncenter,_=st.columns([1.5,17,1])
         with aligncenter:
-            st.header("**Room Type**",divider="rainbow")
+            st.header("Room Type",divider="rainbow")
             st.space("small")
             c1, c2, c3 = st.columns([155.2,120,130],gap= None)
             with c1:
@@ -23,7 +139,7 @@ def city_display_data(listings):
                 st.write("Airbnb hosts can list entire homes/apartments, private, shared rooms, and more recently hotel rooms. \n\n Depending on the room type and activity, a residential airbnb listing could be more like a hotel, disruptive for neighbours, taking away housing, and illegal.")
             with c2:
                 st.space("small")
-                st.pyplot(fig)
+                st.pyplot(fig1, width = 'content')
             with c3:
                 st.space("small")
                 with stylable_container(
@@ -103,6 +219,8 @@ def city_display_data(listings):
                             incentivise short-term rentals vs long-term housing?""")
             with c2:
                 pass
+            st.space("medium")
+            st.pyplot(fig2)
             st.header("Short-Term Rentals",divider="rainbow")
             c1,c2 = st.columns([1.7,1],gap="large")
             with c1: 
@@ -121,6 +239,7 @@ def city_display_data(listings):
                             term rental laws designed to protect
                             residential housing.""")
                 st.space("small")
+            st.pyplot(fig4)
             st.header("Listings per Host",divider="rainbow")
             c1,c2 = st.columns([1.7,1],gap="large")
             with c1: 
@@ -135,6 +254,7 @@ def city_display_data(listings):
                 st.space("small")
                 st.write("""Hosts with multiple listings are more likely to be running a business, are unlikely to be living in the property, and in violation of most short term rental laws designed to protect residential housing.  """)
                 st.space("small")
+            st.pyplot(fig3)
             st.header("Top Hosts",divider="rainbow")
             def col_pretty(col):
                 if col.name == 'total_listings' or col.name == "host_name":
@@ -149,39 +269,3 @@ def city_display_data(listings):
             st.write(top_host_table.style\
                                     .apply(col_pretty, axis=0).hide(axis="index")\
                                     .apply(row_pretty, axis=1).to_html(), unsafe_allow_html=True)
-
-
-
-
-
-
-def neibourhood_display_data():
-    with st.spinner("Comment loading........"):
-        st.write("print some data about the neibor")
-
-
-
-
-
-def listings_display_data(df_reviews,df_listings,data):
-    with st.spinner("Comment loading........"):
-        col1, col2 = st.columns([2,1])
-        with col1.container(border=True):
-            name = df_listings.loc[df_listings["id"] == data,'name']
-            st.write(f"**{name.iloc[0]}**")
-        with col2.container(border=True):
-            if(df_listings.loc[df_listings["id"] == data, "number_of_reviews"] is not None):
-                st.metric(label="Total Reviews", value=df_listings.loc[df_listings["id"] == data, "number_of_reviews"].iloc[0])
-            else:
-                st.metric(label="Total Reviews", value=0)
-
-        reviews = df_reviews[df_reviews["listing_id"] == int(data)]
-        if reviews.empty:
-            st.write("This listing has no comments.")
-        else:
-            for _, review in reviews.iterrows():
-                with st.container(border=True, width= 440):
-                    st.markdown(f":rainbow[**{review['reviewer_name']}**]")
-                    st.caption(f":red[{review['date']}]")
-                    st.write(review["comments"])
-                    st.markdown('<div class="review-marker"/>', unsafe_allow_html=True)
