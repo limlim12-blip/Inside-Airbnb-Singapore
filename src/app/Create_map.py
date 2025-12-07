@@ -35,28 +35,207 @@ def load_data(city):
     colormap.caption = 'House Price'
 
     # markers data
-    df['price'] = df['price'].round(2).astype('string')
-    df.fillna({'price': 'unknown'}, inplace=True)
+    df['price'] = df['price'].round(2).fillna('unknown').astype('string')
+
+
     gdf = gpd.GeoDataFrame(
         df[["id", "host_id", "name", "host_name", "neighbourhood", 'room_type', "price", "number_of_reviews"]], 
         geometry=gpd.points_from_xy(df.longitude, df.latitude),
+        crs="EPSG:4326"
     )
-    gdf.set_crs("EPSG:4326", inplace=True)
 
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     print(f"load map data executed in {elapsed_time:.4f} seconds.")
     return geojson_data, vignette_area, heatmap_data, colormap, gdf
 
-#style func
+
+
+#!style func
 def style_function(feature):
     return {'fillColor': "#00000000", 'color': "#3511FF63", 'fillOpacity': 0.3, 'opacity': 1, 'weight': 1}
 def highlight_function(feature):
     return {'fillColor': '#ff0000', 'color': 'green', 'weight': 4, 'opacity': 1, 'fillOpacity': 0.1}
 def vignette_style(feature):
     return {'fillColor': "#FFFFFFFF", 'color': "#3511FF63", 'fillOpacity': 0.7, 'opacity': 1, 'weight': 1}
+#room_type_style
+ROOM_STYLES = {
+    'Private room': {'fillColor': 'blue', 'color': 'black', 'weight': 0.2, 'radius': 4},
+    'Entire home/apt': {'fillColor': 'purple', 'color': 'black', 'weight': 0.2, 'radius': 4},
+    'Hotel room': {'fillColor': 'green', 'color': 'black', 'weight': 0.2, 'radius': 4},
+    'Shared room': {'fillColor': 'red', 'color': 'black', 'weight': 0.2, 'radius': 4}
+}
+ROOM_STYLES_HIGHLIGHT = {
+    'Private room': {'fillColor': 'blue', 'color': 'black', 'weight': 1, 'radius': 10},
+    'Entire home/apt': {'fillColor': 'purple', 'color': 'black', 'weight': 1, 'radius': 10},
+    'Hotel room': {'fillColor': 'green', 'color': 'black', 'weight': 1, 'radius': 10},
+    'Shared room': {'fillColor': 'red', 'color': 'black', 'weight': 1, 'radius': 10}
+}
+def markers_style(feature):
+    room_type = feature['properties']['room_type']
+    style = ROOM_STYLES.get(room_type, ROOM_STYLES['Private room'])
+    return style
+def marker_highlight(feature):
+    room_type = feature['properties']['room_type']
+    return ROOM_STYLES_HIGHLIGHT.get(room_type, ROOM_STYLES_HIGHLIGHT['Private room'])
 
 
+
+#!map
+MAP_CSS = """
+    <style>
+    .leaflet-container {
+        font-size: 0.55rem !important;
+    }
+
+    .leaflet-tooltip {
+        color: #222;
+        border: 2px solid #ddd;
+        border-radius: 10px; 
+    }
+
+    .custom-tooltip {
+        background-color: white !important;
+        
+        border-radius: 12px !important;
+        
+        padding: 13px 19px !important;
+        
+        font-size: 10px !important;
+        color: #333 !important;
+        
+        max-width: 300px !important;
+        min-width: 200px !important;
+        white-space: normal !important;
+    }
+
+    .custom-popup {
+        max-width: 200px !important;
+        min-width: 150px !important;
+        padding: 3px !important;
+        font-size: 10px !important;
+
+    }
+    </style>
+"""
+if 'data' not in st.session_state:
+    st.session_state['data'] = None
+POPUP = """
+    (feature, layer) => {
+        var label = `🏡 <b style="color: #2196F3;">${feature.properties.name}</b><br>
+                     Host: ${feature.properties.host_name}<br>
+                     Price: $${feature.properties.price}<br>
+                     Reviews: ${feature.properties.number_of_reviews}`;
+
+        layer.bindPopup(label, { opacity: 1, className: 'custom-popup',autoClose: false, closeButton: false });
+        layer.bindTooltip(label, {
+            permanent: false,     
+            direction: 'top',       
+            className: 'custom-tooltip', 
+            opacity: 1,
+            offset: [0, -10],       
+            sticky: true            
+        });
+
+        var originalStyle = Object.assign({}, layer.options);
+
+        var highlightStyle = {
+            fillColor: 'yellow',
+            color: 'black',
+            radius: 10,
+            weight: 2,
+            fillOpacity: 1
+        };
+        if (String(feature.properties.id) == "REPLACE_ME") {
+            setTimeout(() => {
+                layer.openPopup();
+            }, 100);
+        }
+
+        layer.on('popupclose', function(e) {
+            this.setStyle(originalStyle);
+        });
+        layer.on('popupopen', function(e) {
+            this.setStyle(highlightStyle);
+            this.bringToFront();
+        });
+
+        layer.on("click", (event) => {
+            Streamlit.setComponentValue(feature.properties.id);
+        });
+    }
+"""
+#! 1
+def setup_map(geojson_data):
+    minx, miny, maxx, maxy = geojson_data.total_bounds
+    bounds = [[miny-0.1, minx-0.1], [maxy+0.1, maxx+0.1]]
+    m = folium.Map(
+                tiles="Cartodb Positron",
+                min_lat=miny-0.1,
+                min_lon=minx-0.1,
+                max_lat=maxy+0.1,
+                max_lon=maxx+0.1,
+                max_bounds=bounds,
+                zoomDelta=0, 
+                zoomSnap=0.25,
+                max_zoom=16,
+                zoom_control=False,
+                prefer_canvas=True,
+            )
+    m.get_root().header.add_child(folium.Element(MAP_CSS))
+    m.fit_bounds([[miny, minx], [maxy, maxx]])
+    folium.LayerControl(collapsed=False, position='bottomright',draggable=True).add_to(m)
+    Fullscreen(
+        position="topright", title="Expand me", title_cancel="Exit me", force_separate_button=True
+    ).add_to(m)
+    return m
+
+
+def create_map_1(city):
+    start_time = time.perf_counter()
+    geojson_data, vignette_area, _, _, gdf = load_data(city)
+
+    m = setup_map(geojson_data)
+
+    # Create feature groups
+    bounds = folium.FeatureGroup(name="bounds")
+    marker = folium.FeatureGroup(name="marker")
+
+    # Add bounds layers
+    folium.GeoJson(
+        vignette_area, style_function=vignette_style, name='Vignette Layer', control=False,overlay=False,
+        on_each_feature= folium.JsCode(   
+            """
+                (feature, layer) => {
+                    layer.on("click", (event) => {
+                        Streamlit.setComponentValue(null);
+                    });
+                }
+            """
+        )
+    ).add_to(bounds)
+    folium.GeoJson(
+        geojson_data, style_function=style_function, highlight_function=highlight_function, name='GeoJSON Layer', zoom_on_click=True, control=False,overlay=False,
+    ).add_to(bounds)
+
+    # Add markers
+    folium.GeoJson(
+        gdf,
+        zoom_on_click=True,
+        name="Listings",
+        style_function=markers_style,
+        marker=folium.CircleMarker(fill_opacity=0.7, fill=True),
+        on_each_feature= folium.JsCode(POPUP.replace("REPLACE_ME", f"{st.session_state['data']}"))
+    ).add_to(marker)
+
+    # Add plugins
+    
+    elapsed_time = time.perf_counter() - start_time
+    print(f"create_map_1 executed in {elapsed_time:.4f} seconds.")
+    return m, [bounds, marker]
+
+
+#! 2
 def create_map(city):
     start_time = time.perf_counter()
     geojson_data, vignette_area, heatmap_data, colormap,gdf = load_data(city)
@@ -64,51 +243,12 @@ def create_map(city):
     minx, miny, maxx, maxy = geojson_data.total_bounds
     bounds = [[miny-0.1, minx-0.1], [maxy+0.1, maxx+0.1]]
     # setup map
-    m = folium.Map(
-                    tiles="Cartodb Positron",
-                    min_lat=miny-0.1,
-                    min_lon=minx-0.1,
-                    max_lat=maxy+0.1,
-                    max_lon=maxx+0.1,
-                    max_bounds=bounds,
-                    zoomDelta=0, 
-                    zoomSnap=0.25,
-                    max_zoom=16,
-                    zoom_control=False,
-                    prefer_canvas=True,
-                )
-    css = """
-    <style>
-    .leaflet-container {
-    font-size: 0.55rem  !important;
-    }
-    .leaflet-tooltip {
-        color: #222;
-        border: 2px solid #ddd;
-        border-radius: 10px; 
-        font-size: 1.2em;
-    }
-    .leaflet-control-layers-expanded {
-        width: 130px !important; 
-        font-size: 0.7rem  !important;
-    }
-    .custom-tooltip {
-        max-width: 300px !important;
-        min-width: 150px !important;
-        white-space: normal !important;
-        word-wrap: break-word !important;
-        background-color: white !important;
-        border: 2px solid #ccc !important;
-        padding: 8px !important;
-        font-size: 13px !important;
-    }
-    </style>
-    """
-    m.get_root().header.add_child(folium.Element(css))
+    m= setup_map(geojson_data)
 
     marker = folium.FeatureGroup(name="marker")
     heatmap = folium.FeatureGroup(name="heatmap")
     bounds = folium.FeatureGroup(name="bounds")
+
     # heatmap + colormap
     HeatMap(data=heatmap_data, name='House Price', blur=23, radius=30, min_opacity=0.2).add_to(heatmap)
     colormap.add_to(m)
@@ -127,9 +267,7 @@ def create_map(city):
         )
     ).add_to(bounds)
     folium.GeoJson(
-        geojson_data, style_function=style_function, highlight_function=highlight_function,
-        name='GeoJSON Layer', zoom_on_click=True, control=False,overlay=False,
-
+        geojson_data, style_function=style_function, highlight_function=highlight_function, name='GeoJSON Layer', zoom_on_click=True, control=False,overlay=False,
         on_each_feature= folium.JsCode(   
         """
             (feature, layer) => {
@@ -138,9 +276,6 @@ def create_map(city):
                 layer.on("click", (event) => {
                     Streamlit.setComponentValue({
                         Neighbourhood: feature.properties.neighbourhood,
-                        // Be careful, on_each_feature binds only once.
-                        // You need to extract the current location from
-                        // the event.
                     });
                  });
             }
@@ -155,74 +290,21 @@ def create_map(city):
     marker_cluster = MarkerCluster(
         name="Airbnb Density",options={'max_cluster_radius': 60,'spiderfyOnMaxZoom': True,'removeOutsideVisibleBounds': True}, disableClusteringAtZoom=17
     )
-    
-    #! biết đâu cần dùng`
-    # for lati, longi in zip(data.latitude, data.longitude):
-    #     folium.Circle(  
-    #         location=[lati, longi], radius=10, fill_color="#3388FF", fill=True,
-    #         fill_opacity=1, weight=1, tooltip=[lati, longi], popup="Hi, I'm a marker"
-    #     ).add_to(marker_cluster)
-    # marker_cluster.add_to(m)
-    # # coords = [
-    # #     [row.latitude, row.longitude, f"<b>{row.host_name}</b><br>Price: ${row.price}"]
-    #     for row in data.itertuples(index=False)
-    # ]
-    # FastMarkerCluster(coords, callback=callback).add_to(m)
-
-    url = "https://leafletjs.com/examples/custom-icons/{}".format
-    icon_image = url("leaf-red.png")
-    shadow_image = url("leaf-shadow.png")
     folium.GeoJson(
         gdf,
         name="Listings",
-        marker=folium.Marker(icon = folium.CustomIcon(
-            icon_image,
-            icon_size=(19, 48),       
-            icon_anchor=(11, 47),     
-            shadow_image=shadow_image,
-            shadow_size=(25, 32),     
-            shadow_anchor=(2, 31),     
-            popup_anchor=(-2, -38),   
-        )),
+        style_function= markers_style,
+        marker = folium.CircleMarker(fill_opacity=0.7, fill= True),
+        highlight_function = marker_highlight,
         #! code lấy từ streamlit-folium
-        on_each_feature= folium.JsCode(          
-        """
-            (feature, layer) => {
-                var label = `🏡 <b style="color: #2196F3;">${feature.properties.name}</b> by\
-                                <b style="color: #2196F3;">${feature.properties.host_name}</b>\
-                                <br>Price: $${feature.properties.price} <br>\
-                                Number of reviews: ${feature.properties.number_of_reviews}`;
-                layer.bindTooltip(label,{
-                    direction: 'top', 
-                    permanent: false, 
-                    opacity: 1,
-                    offset: [0,-20],
-                    className: 'custom-tooltip',
-                });
-                layer.on("click", (event) => {
-                    Streamlit.setComponentValue(
-                        feature.properties.id,
-                        // Be careful, on_each_feature binds only once.
-                        // You need to extract the current location from
-                        // the event.
-                    );
-                });
-
-            }
-        """
-    )
-
+        on_each_feature= folium.JsCode(POPUP)
     ).add_to(marker_cluster)
     marker_cluster.add_to(marker)
 
     
-    m.fit_bounds([[miny, minx], [maxy, maxx]])
 
     # plugins
-    folium.LayerControl(collapsed=False, position='bottomright',draggable=True).add_to(m)
-    Fullscreen(
-        position="topright", title="Expand me", title_cancel="Exit me", force_separate_button=True
-    ).add_to(m)
+    m.fit_bounds([[miny, minx], [maxy, maxx]])
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     print(f"create map executed in {elapsed_time:.4f} seconds.")

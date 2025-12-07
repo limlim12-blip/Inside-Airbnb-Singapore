@@ -1,3 +1,4 @@
+import os
 from turtle import color
 from load_data import load_fig
 import streamlit as st
@@ -5,8 +6,8 @@ from streamlit_extras.stylable_container import stylable_container
 import glob
 import random
 
-
-roblox_files = glob.glob("roblox_profile_pic/*.png")
+script_dir = os.path.dirname(os.path.abspath(__file__))
+roblox_files = glob.glob(os.path.join(script_dir,"../../roblox_profile_pic/*.png"))
 random.seed(42)
 def city_display_data(listings):
     with st.container(border=True,key='1', horizontal_alignment="left",height=100):
@@ -30,10 +31,10 @@ def neibourhood_display_data(listings, st_data):
         col1, col2 = st.columns([1,1])
         with col1:
             citi = st.session_state['city'].split(',')
-            st.header(f":blue[{st_data['Neighbourhood']}]")
+            st.title(f":blue[{st_data['Neighbourhood']}]")
         with col2:
             number = f"{len(neibourhood_listings):,} listings "
-            st.header(f":rainbow[{number}]")
+            st.title(f":rainbow[{number}]")
     display_stat(neibourhood_listings)
 
 
@@ -43,9 +44,19 @@ def neibourhood_display_data(listings, st_data):
 def listings_display_data(df_reviews,df_listings,data):
     with st.spinner("load comment"):
         listings_data = df_listings.loc[df_listings["id"] == data]
+        listings_data = listings_data.fillna("unknown")
         name = listings_data['name']
-        st.markdown(f'<h2 class="listings-name">{str(name.iloc[0])}</h2>', unsafe_allow_html= True)
-
+        url = listings_data['listing_url']
+        st.markdown(
+            f"""
+            <h2 class="listings-name">
+                <a href="Hosted by {url.iloc[0]}">
+                    {str(name.iloc[0])}
+                </a>
+            </h2>
+            """, 
+            unsafe_allow_html=True
+        )
         
         st.header('', divider='rainbow')
         col1, col2 = st.columns([1,6])
@@ -57,7 +68,18 @@ def listings_display_data(df_reviews,df_listings,data):
                             , unsafe_allow_html= True)
         with col2:
             host_name = listings_data['host_name']
-            st.markdown(f'<h3 class="listings-host">Hosted by {str(host_name.iloc[0])}</h3>', unsafe_allow_html= True)
+            host_url = listings_data['host_url']
+            st.markdown(
+                f"""
+                <h3 class="listings-host" style="font-size: 18.4px;margin: 0px;">
+                    Hosted by
+                    <a href=" {host_url.iloc[0]}" target="_blank" style="font-size: 18.4px;margin: 0px;">
+                        {str(host_name.iloc[0])}
+                    </a>
+                </h3>
+                """, 
+                unsafe_allow_html=True
+            )
             host_since = listings_data['host_since']
             st.markdown(f'<p class="listings-host">Host since {host_since.iloc[0]}</p>', unsafe_allow_html= True)
 
@@ -74,15 +96,17 @@ def listings_display_data(df_reviews,df_listings,data):
         _, center,_ = st.columns([1,20,1])
         center.space('medium')
         center.image(str(listings_data['picture_url'].iloc[0]))
+        center.markdown(f'<h1 style="text-align:center;">{str(listings_data["review_scores_rating"].iloc[0]).upper()}🌟</h1>', unsafe_allow_html= True)
+        center.markdown(f'<p style="text-align:center;">This home is a guest favorite based on ratings, reviews, and reliability</p>', unsafe_allow_html= True)
         center.space('medium')
-        cols = center.columns([1.5,1.3,1.2,1.8,1.2,1], gap='small')
+        cols = center.columns([1.2,1,1,1.8,1.2,1], gap='small')
         items = [
-            {"label": "Cleanliness", "score": f'{listings_data["review_scores_cleanliness"].iloc[0]}', "icon": "🧼"},
-            {"label": "Accuracy", "score": f'{listings_data["review_scores_accuracy"].iloc[0]}', "icon": "✅"},
-            {"label": "Check-in", "score": f'{listings_data["review_scores_checkin"].iloc[0]}', "icon": "🔑"},
-            {"label": "Communication", "score": f'{listings_data["review_scores_communication"].iloc[0]}', "icon": "💬"},
-            {"label": "Location", "score": f'{listings_data["review_scores_location"].iloc[0]}', "icon": "🗺️"},
-            {"label": "Value", "score": f'{listings_data["review_scores_value"].iloc[0]}', "icon": "🏷️"}
+            {"label": "Cleanliness", "score": f'{listings_data["review_scores_cleanliness"].iloc[0]}🌟', "icon": "🧼"},
+            {"label": "Accuracy", "score": f'{listings_data["review_scores_accuracy"].iloc[0]}🌟', "icon": "✅"},
+            {"label": "Check-in", "score": f'{listings_data["review_scores_checkin"].iloc[0]}🌟', "icon": "🔑"},
+            {"label": "Communication", "score": f'{listings_data["review_scores_communication"].iloc[0]}🌟', "icon": "💬"},
+            {"label": "Location", "score": f'{listings_data["review_scores_location"].iloc[0]}🌟', "icon": "🗺️"},
+            {"label": "Value", "score": f'{listings_data["review_scores_value"].iloc[0]}🌟', "icon": "🏷️"}
         ]
         for i, col in enumerate(cols):
             item = items[i]
@@ -100,7 +124,6 @@ def listings_display_data(df_reviews,df_listings,data):
                 st.subheader(f'{listings_data["number_of_reviews"].iloc[0]} reviews')
             else:
                 st.subheader('0 reviews')
-            st.divider()
 
             st.markdown('<div class="review-marker"/>', unsafe_allow_html=True)
 
@@ -109,6 +132,7 @@ def listings_display_data(df_reviews,df_listings,data):
                     st.write("This listing has no comments.")
                 else:
                     for _, review in reviews.iterrows():
+                        st.divider()
                         col1, col2 = st.columns([1,7])
                         with col1.container():
                             st.image(random.choice(roblox_files), width= 45)
@@ -118,7 +142,6 @@ def listings_display_data(df_reviews,df_listings,data):
                             st.caption(f":red[{review['date']}]")
                         st.markdown("<br/>",unsafe_allow_html=True)
                         st.write(review["comments"])
-                        st.space("medium") 
         
 
 

@@ -1,6 +1,6 @@
 from ctypes import alignment
 from locale import currency
-from os import error
+import os
 from pathlib import Path
 import time
 from matplotlib import ticker
@@ -14,7 +14,9 @@ import pandas as pd
 import polars as pl
 from urllib.parse import quote
 url = "https://insideairbnb.com/get-the-data/"
-currency_csv = pd.read_csv('raw/currency.csv')
+script_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(script_dir, '../../raw/currency.csv')
+currency_csv = pd.read_csv(file_path)
 
 
 
@@ -36,18 +38,18 @@ def scrape_data():
 
 
 @st.cache_data 
-def load_review(city):
+def load_review(city = 'Singapore, Singapore, Singapore'):
 	start_time = time.perf_counter()
 	try:
 		csv_reviews_path = scrape_data()[city][2]
 	except Exception as e:
 		st.error(f" NOT MY FAULT! Its error connection, wifi problem not code problem or {e} at review. So use this instead")
 		if city == "Bangkok, Central Thailand, Thailand":
-			csv_reviews_path = "raw/bangkok/2025-06-24/data/reviews.csv.gz"
+			csv_reviews_path = os.path.join(script_dir,"../../raw/bangkok/2025-06-24/data/reviews.csv.gz")
 		elif city == "Taipei, Northern Taiwan, Taiwan":
-			csv_reviews_path = "raw/taipei/2025-06-29/data/reviews.csv.gz"
+			csv_reviews_path = os.path.join(script_dir,"raw/taipei/2025-06-29/data/reviews.csv.gz")
 		else:
-			csv_reviews_path = "raw/singapore/2025-09-28/data/reviews.csv.gz"
+			csv_reviews_path = os.path.join(script_dir,"raw/singapore/2025-09-28/data/reviews.csv.gz")
 	pf= pl.scan_csv(
 		csv_reviews_path,
 		low_memory = False,
@@ -62,7 +64,7 @@ def load_review(city):
 	print(f"reviews executed in {elapsed_time:.4f} seconds.")
 	return df
 @st.cache_data 
-def load_listings(city):
+def load_listings(city = 'Singapore, Singapore, Singapore'):
 	start_time = time.perf_counter()
 	country = city.split(',')[0].strip().upper()
 	try:
@@ -75,11 +77,11 @@ def load_listings(city):
 	except Exception as e:
 		st.error(f" NOT MY FAULT! Its error connection, wifi problem not code problem or {e} at listings. So use this instead")
 		if city == "Bangkok, Central Thailand, Thailand":
-			csv_listings_path = "raw/bangkok/2025-06-24/data/listings.csv.gz"
+			csv_listings_path = os.path.join(script_dir,"raw/bangkok/2025-06-24/data/listings.csv.gz")
 		elif city == "Taipei, Northern Taiwan, Taiwan":
-			csv_listings_path = "raw/taipei/2025-06-29/data/listings.csv.gz"
+			csv_listings_path = os.path.join(script_dir,"raw/taipei/2025-06-29/data/listings.csv.gz")
 		else:
-			csv_listings_path = "raw/singapore/2025-09-28/data/listings.csv.gz"
+			csv_listings_path = os.path.join(script_dir,"raw/singapore/2025-09-28/data/listings.csv.gz")
 	pf = pl.scan_csv(csv_listings_path, schema_overrides={"id": pl.String, 'license': pl.String})
 	pf = pf.with_columns(
 		pl.col("price").str.replace_all(r"[\$,]", "").alias("price")
@@ -97,18 +99,18 @@ def load_listings(city):
 
 
 @st.cache_data 
-def load_geojson(city):
+def load_geojson(city = 'Singapore, Singapore, Singapore'):
 	start_time = time.perf_counter()
 	try:
 		geojson_path = scrape_data()[city][6]
 	except Exception as e:
 		st.error(f" NOT MY FAULT! Its error connection, wifi problem not code problem or {e} at geojson. So use this instead pls 🥳")
 		if city == "Bangkok, Central Thailand, Thailand":
-			geojson_path = "raw/bangkok/2025-06-24/visualisations/neighbourhoods.geojson"
+			geojson_path = os.path.join(script_dir,"raw/bangkok/2025-06-24/visualisations/neighbourhoods.geojson")
 		elif city == "Taipei, Northern Taiwan, Taiwan":
-			geojson_path = "raw/taipei/2025-06-29/visualisations/neighbourhoods.geojson"
+			geojson_path = os.path.join(script_dir,"raw/taipei/2025-06-29/visualisations/neighbourhoods.geojson")
 		else:
-			geojson_path = "raw/singapore/2025-09-28/visualisations/neighbourhoods.geojson"
+			geojson_path = os.path.join(script_dir,"raw/singapore/2025-09-28/visualisations/neighbourhoods.geojson")
 	
 
 	geojson_data = gpd.read_file(geojson_path, encoding='utf-8')
