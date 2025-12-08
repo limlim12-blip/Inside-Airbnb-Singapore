@@ -32,8 +32,7 @@ To run this project locally, you need Python installed on your system.
 ### Step 1: Clone the repository
 
 ```bash
-git clone <repository_url>
-cd Insight-Airbnb-main
+git clone https://github.com/limlim12-blip/Insight-Airbnb.git
 ````
 ### Optional Step: Get initial data
 
@@ -70,7 +69,7 @@ The application will automatically open in your default web browser.
 4.  **Change City:** Click the **"ALL KIND OF CITIES"** popover button in the header to view and select different cities from the available list.
 5.  **More data visualization**: For a little more detail data exploration, you can check out **Map** at the **Menu** popover button
 
-    The following is the revised README content in markdown code format, incorporating the instructions for running `src/Get_raw.py` to obtain data for multiple cities.
+
 
 
 
