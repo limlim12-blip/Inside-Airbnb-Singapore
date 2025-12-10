@@ -105,11 +105,6 @@ if __name__ == "__main__":
                 height: 100vh; 
                 width: 100%;
             }
-            [data-testid="stMarkdownContainer"] {
-                margin: 0px !important;
-                padding: 0px !important;
-
-            }
             div[data-testid="stVerticalBlock"]:has(div.review-marker):not(:has(div.parent)) {
                     border-radius: 20px !important;
                     padding-bottom: 1rem;
@@ -184,6 +179,11 @@ if __name__ == "__main__":
                 padding-right: 3rem;
                 background-color: white;
             }
+            .fullHeight {
+                height: 100%; 
+                width: 100%;
+                overflow: auto; 
+            }
             </style>
             """,
             unsafe_allow_html=True
@@ -230,7 +230,7 @@ if __name__ == "__main__":
             with st.spinner("Creating map..."):
                 m, fg = create_map_1(st.session_state['city']) 
 
-            col1, col2 = st.columns([1,1])
+            col1, col2 = st.columns([2,1])
             # render map
             with col1.container(height=350):
                 map_data = draw_map(m, fg, 350)
