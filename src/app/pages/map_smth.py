@@ -217,7 +217,7 @@ if __name__ == "__main__":
             # render map
             with col1.container(height=680):
                 map_data = draw_map(m, fg)
-                if map_data and map_data != st.session_state['last_interaction']:
+                if map_data != st.session_state['last_interaction']:
                     st.session_state['data'] = map_data
                     st.session_state['last_interaction'] = map_data
             st_data = st.session_state['data']
