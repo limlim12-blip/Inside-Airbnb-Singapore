@@ -56,6 +56,13 @@ Start the Streamlit application from the project root directory:
 ```bash
 streamlit run src/app/main.py
 ```
+### Preview:
+* `High-level distribution and property types`
+![](roblox_profile_pic/2026-03-21-011114_hyprshot.png)
+* `Localized metrics and occupancy`
+![](roblox_profile_pic/2026-03-21-011321_hyprshot.png)
+* `Navigation and UI interactivity`
+![](roblox_profile_pic/2026-03-21-011716_hyprshot.png)
 
 
 
