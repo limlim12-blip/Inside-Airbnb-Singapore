@@ -23,6 +23,11 @@ The application is built primarily using Python and relies on the following key 
 
 
 
+<video src="https://github.com/user-attachments/assets/172bf5eb-4664-46e5-b495-524291056ae6" controls="controls" muted="muted" class="d-block rounded-bottom-2 border-top width-fit" style="max-height:640px; min-height: 200px">
+</video>
+
+
+
 ## Installation and Setup
 You can use this project directly at [Insight-airbnb](https://insight-airbnb-1.streamlit.app/).
 
