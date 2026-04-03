@@ -49,7 +49,7 @@ def listings_display_data(df_reviews,df_listings,data):
         st.markdown(
             f"""
             <h2 class="listings-name">
-                <a href="Hosted by {url.iloc[0]}">
+                <a href="{url.iloc[0]}" target="_blank">
                     {str(name.iloc[0])}
                 </a>
             </h2>
