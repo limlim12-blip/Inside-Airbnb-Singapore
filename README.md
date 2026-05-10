@@ -1,26 +1,3 @@
-# Insight-Airbnb
-
-## Project Description
-I built this interactive web app as a university project, where it ended up receiving a maximum score.
-This project is an interactive Streamlit web application designed for exploring and analyzing Airbnb listing data across multiple cities The application provides a comprehensive platform for users to gain insights into city-wide rental statistics and discover personalized listing recommendations. This project was inspired by [inside-airbnb](https://insideairbnb.com/get-the-data/).
-
-
-Key features of the application include:
-
-* **Interactive Map Visualization:** A dynamic map (using `folium` and `streamlit_folium`) displays the geographical distribution of listings, allowing users to select individual properties.
-* **City-wide and Listing-specific Statistics:** The app presents aggregated statistical data for the selected city, which switches to a detailed view of an individual listing when selected on the map.
-* **Multi-City Support:** The application is built to load data and switch between different cities, provided the data is available for scraping.
-
-## Tech Stack
-
-The application is built primarily using Python and relies on the following key libraries:
-
- **Web Framework:** `streamlit` 
- **Data Analysis:** `pandas`, `numpy`, `polars` 
- **Machine Learning:** `scikit_learn` (for KNN model and preprocessing) 
- **Mapping/Geospatial:** `folium`, `streamlit_folium`, `geopandas` 
- **Web Scraping:** `beautifulsoup4`, `Requests` 
-
 
 
 <video src="https://github.com/user-attachments/assets/172bf5eb-4664-46e5-b495-524291056ae6" controls="controls" muted="muted" class="d-block rounded-bottom-2 border-top width-fit" style="max-height:640px; min-height: 200px">
