@@ -1,4 +1,4 @@
-
+ ## This project was inspired by inside-airbnb.
 
 <video src="https://github.com/user-attachments/assets/172bf5eb-4664-46e5-b495-524291056ae6" controls="controls" muted="muted" class="d-block rounded-bottom-2 border-top width-fit" style="max-height:640px; min-height: 200px">
 </video>
